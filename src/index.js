@@ -132,7 +132,7 @@ const ray = {
       ctx.beginPath();
       ctx.strokeStyle = 'rgba(255,255,255,0.1)';
       if (this.collidedObject) {
-        ctx.globalAlpha = 0.2 - (i / this.segments.length / 10) * 2;
+        ctx.globalAlpha = 0.2;
         ctx.fillStyle = this.collidedObject.color;
       } else {
         ctx.fillStyle = 'rgba(255,255,255,0.08)';
