@@ -3,9 +3,15 @@ import {
   signedDistanceToCircle,
   truncateBetween,
   degToRad,
+  getSegmentVector,
 } from './utils.js';
 
 const KEYS_PRESSED = {};
+const MOUSE = {
+  position: { x: null, y: false },
+  isDown: false,
+};
+
 const isMovementKey = key =>
   key === 'w' ||
   key === 's' ||
@@ -23,12 +29,12 @@ const canvas = document.querySelector('.canvas');
 const ctx = canvas.getContext('2d');
 
 const obstacles = [
-  { center: [500, 200], radius: 50, color: 'red' },
-  { center: [800, 100], radius: 100, color: 'yellow' },
-  { center: [100, 300], radius: 80, color: 'blue' },
-  { center: [150, 50], radius: 40, color: 'green' },
-  { center: [500, 800], radius: 120, color: 'gold' },
-  { center: [190, 600], radius: 70, color: 'orange' },
+  { center: [500, 200], radius: 50, color: '#F08080' },
+  { center: [800, 100], radius: 100, color: '#FFF176' },
+  { center: [100, 300], radius: 80, color: '#D8BFD8' },
+  { center: [150, 50], radius: 40, color: '#A5D6A7' },
+  { center: [500, 800], radius: 120, color: '#880E4F' },
+  { center: [190, 600], radius: 70, color: '#0097A7' },
 ];
 
 const hero = {
@@ -62,20 +68,21 @@ const hero = {
     this.updatePosition([nx, ny]);
   },
   rotate() {
-    if (KEYS_PRESSED['arrowright']) {
-      hero.updateAngle(-1);
+    let delta = degToRad(1);
+    if (MOUSE.isDown) {
+      hero.updateAngle(getSegmentVector(this.position, MOUSE.position));
+    } else if (KEYS_PRESSED['arrowright']) {
+      hero.updateAngle(this.angle - delta);
     } else if (KEYS_PRESSED['arrowleft']) {
-      hero.updateAngle(1);
+      hero.updateAngle(this.angle + delta);
     }
   },
   updateAngle(angle) {
-    this.angle += angle;
-
-    if (this.angle > 360) this.angle = 0;
-    else if (this.angle < 0) this.angle = 360;
-
-    const angleRad = degToRad(this.angle);
-    this.directionVector = [Math.sin(angleRad), Math.cos(angleRad)];
+    if (Array.isArray(angle)) {
+      angle = Math.atan2(1, 0) - Math.atan2(angle[1], angle[0]);
+    }
+    this.angle = angle;
+    this.directionVector = [Math.sin(angle), Math.cos(angle)];
   },
   updatePosition(newPoint) {
     const hasCollided = obstacles.some(
@@ -167,13 +174,12 @@ const loop = () => {
   ray.getSegments(hero.position, hero.directionVector);
 
   ctx.fillStyle = 'rgba(255,255,255,0.2)';
-  ctx.strokeStyle = 'rgba(255,255,255,0.4)';
 
   obstacles.forEach(obstacle => {
     ctx.beginPath();
+    // ctx.fillStyle = obstacle.color;
     ctx.arc(...obstacle.center, obstacle.radius, 0, Math.PI * 2);
     ctx.fill();
-    ctx.stroke();
   });
 
   ray.render();
@@ -212,6 +218,15 @@ const init = () => {
   window.addEventListener('resize', updateCanvasSize);
   window.addEventListener('keyup', onKeyup);
   window.addEventListener('keydown', onKeydown);
+  canvas.addEventListener('mousemove', e => {
+    MOUSE.position = [e.clientX, e.clientY];
+  });
+  canvas.addEventListener('mouseup', e => {
+    MOUSE.isDown = false;
+  });
+  canvas.addEventListener('mousedown', e => {
+    MOUSE.isDown = true;
+  });
 
   /** Start position and angle */
   hero.updatePosition([canvas.width / 2, canvas.height / 2]);
