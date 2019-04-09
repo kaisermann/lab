@@ -17,12 +17,27 @@ export function degToRad(deg) {
   return deg * (Math.PI / 180);
 }
 
+export function radToDeg(rad) {
+  return rad * (180 / Math.PI);
+}
+
 export function getDistanceBetweenPoints([x1, y1], [x2, y2]) {
   return Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
 }
 
 export function signedDistanceToCircle([px, py], { center: [cx, cy], radius }) {
   return getDistanceBetweenPoints([cx, cy], [px, py]) - radius;
+}
+export function getDotProduct([x1, y1], [x2, y2]) {
+  return x1 * x2 + y1 * y2;
+}
+
+export function getCrossProduct([x1, y1], [x2, y2]) {
+  return x1 * y2 - x2 * y2;
+}
+
+export function getSegmentVector([x1, y1], [x2, y2]) {
+  return [x2 - x1, y2 - y1];
 }
 
 // function segmentToGeneralForm([[x1, y1], [x2, y2]]) {
