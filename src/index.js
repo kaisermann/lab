@@ -216,6 +216,7 @@ const init = () => {
       e.preventDefault();
     }
   });
+  
   canvas.addEventListener('mousemove', e => {
     MOUSE.position = [e.clientX, e.clientY];
   });
