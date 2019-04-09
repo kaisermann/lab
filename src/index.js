@@ -12,16 +12,6 @@ const MOUSE = {
   isDown: false,
 };
 
-const isMovementKey = key =>
-  key === 'w' ||
-  key === 's' ||
-  key === 'd' ||
-  key === 'a' ||
-  key === 'arrowleft' ||
-  key === 'arrowright' ||
-  key === 'arrowup' ||
-  key === 'arrowdown';
-
 let animationRequest;
 let canvasDiagonalLength;
 
@@ -101,6 +91,7 @@ const hero = {
 const ray = {
   segments: [],
   collidedObject: null,
+  /** return tuple of [obstacle,distanceToIt] */
   getClosestObstacle(point) {
     return obstacles.reduce(
       (acc, circle) => {
@@ -112,9 +103,6 @@ const ray = {
       },
       [null, Number.MAX_SAFE_INTEGER],
     );
-  },
-  getCollisionPoint() {
-    return this.segments[this.segments.length - 1][0];
   },
   getSegments(origin, directionVector) {
     this.segments = [];
@@ -132,8 +120,11 @@ const ray = {
 
     this.collidedObject = distance < 0.1 ? closestObstacle : null;
   },
+  getCollisionPoint() {
+    return this.segments[this.segments.length - 1][0];
+  },
   render() {
-    /** Draw ray march */
+    ctx.lineWidth = 2;
 
     this.segments.forEach(([center, radius], i) => {
       ctx.beginPath();
@@ -149,16 +140,17 @@ const ray = {
       ctx.fill();
       ctx.globalAlpha = 1;
       ctx.beginPath();
-      ctx.fillStyle = 'rgba(255,0,0,0.4)';
-      ctx.arc(...center, 2, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(255,255,255,0.4)';
+      ctx.arc(...center, 3, 0, Math.PI * 2);
       ctx.fill();
     });
 
-    /** Draw ray */
     ctx.beginPath();
     ctx.moveTo(...hero.position);
     ctx.lineTo(...this.getCollisionPoint());
     ctx.stroke();
+
+    ctx.lineWidth = 1;
   },
 };
 
@@ -186,14 +178,26 @@ const loop = () => {
 };
 
 const init = () => {
-  function updateCanvasSize() {
+  const isMovementKey = key =>
+    key === 'w' ||
+    key === 's' ||
+    key === 'd' ||
+    key === 'a' ||
+    key === 'arrowleft' ||
+    key === 'arrowright' ||
+    key === 'arrowup' ||
+    key === 'arrowdown';
+
+  const updateCanvasSize = () => {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
     canvasDiagonalLength = Math.sqrt(canvas.width ** 2 + canvas.height ** 2);
     return updateCanvasSize;
-  }
+  };
+  updateCanvasSize();
 
-  function onKeyup(e) {
+  window.addEventListener('resize', updateCanvasSize);
+  window.addEventListener('keyup', e => {
     delete KEYS_PRESSED[e.key.toLowerCase()];
     if (e.key === ' ' || e.code === 'Space') {
       if (animationRequest) {
@@ -203,21 +207,16 @@ const init = () => {
         animationRequest = requestAnimationFrame(loop);
       }
     }
-  }
-
-  function onKeydown(e) {
+  });
+  window.addEventListener('keydown', e => {
     const key = e.key.toLowerCase();
 
     KEYS_PRESSED[key] = true;
     if (isMovementKey(key)) {
       e.preventDefault();
     }
-  }
-
-  updateCanvasSize();
-  window.addEventListener('resize', updateCanvasSize);
-  window.addEventListener('keyup', onKeyup);
-  window.addEventListener('keydown', onKeydown);
+  });
+  
   canvas.addEventListener('mousemove', e => {
     MOUSE.position = [e.clientX, e.clientY];
   });
