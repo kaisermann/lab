@@ -3,12 +3,15 @@ import {
   signedDistanceToCircle,
   truncateBetween,
   degToRad,
+  radToDeg,
   getSegmentVector,
+  getDistanceBetweenPointRect,
 } from './utils.js';
 
+const MAX_STEPS = 250;
 const KEYS_PRESSED = {};
 const MOUSE = {
-  position: { x: null, y: false },
+  position: null,
   isDown: false,
 };
 
@@ -25,9 +28,10 @@ const obstacles = [
   { center: [150, 50], radius: 40, color: '#A5D6A7' },
   { center: [500, 800], radius: 120, color: '#880E4F' },
   { center: [190, 600], radius: 70, color: '#0097A7' },
+  { origin: [450, 300], size: [90, 160], color: '#0D2FC9' },
 ];
 
-const hero = {
+const eye = {
   position: null,
   angle: null,
   directionVector: null,
@@ -60,11 +64,11 @@ const hero = {
   rotate() {
     let delta = degToRad(1);
     if (MOUSE.isDown) {
-      hero.updateAngle(getSegmentVector(this.position, MOUSE.position));
+      eye.updateAngle(getSegmentVector(this.position, MOUSE.position));
     } else if (KEYS_PRESSED['arrowright']) {
-      hero.updateAngle(this.angle - delta);
+      eye.updateAngle(this.angle - delta);
     } else if (KEYS_PRESSED['arrowleft']) {
-      hero.updateAngle(this.angle + delta);
+      eye.updateAngle(this.angle + delta);
     }
   },
   updateAngle(angle) {
@@ -75,10 +79,14 @@ const hero = {
     this.directionVector = [Math.sin(angle), Math.cos(angle)];
   },
   updatePosition(newPoint) {
-    const hasCollided = obstacles.some(
-      ({ center: [x, y], radius }) =>
-        getDistanceBetweenPoints([x, y], newPoint) <= radius,
-    );
+    const hasCollided = obstacles.some(obstacle => {
+      if (obstacle.radius) {
+        const { center, radius } = obstacle;
+        return getDistanceBetweenPoints(center, newPoint) <= radius;
+      } else if (obstacle.size) {
+        return getDistanceBetweenPointRect(newPoint, obstacle) <= 0;
+      }
+    });
 
     if (hasCollided) {
       return;
@@ -94,10 +102,13 @@ const ray = {
   /** return tuple of [obstacle,distanceToIt] */
   getClosestObstacle(point) {
     return obstacles.reduce(
-      (acc, circle) => {
-        const distance = signedDistanceToCircle(point, circle);
+      (acc, obstacle) => {
+        const distance = obstacle.radius
+          ? signedDistanceToCircle(point, obstacle)
+          : getDistanceBetweenPointRect(point, obstacle);
+
         if (distance < acc[1]) {
-          acc = [circle, distance];
+          acc = [obstacle, distance];
         }
         return acc;
       },
@@ -112,7 +123,11 @@ const ray = {
     let point = origin;
     this.segments.push([point, distance]);
 
-    while (distance > 0.0001 && distance <= canvasDiagonalLength) {
+    for (
+      let i = 0;
+      distance > 0.0001 && distance <= canvasDiagonalLength && i < MAX_STEPS;
+      i++
+    ) {
       point = [point[0] + distance * u[0], point[1] + distance * u[1]];
       [closestObstacle, distance] = this.getClosestObstacle(point);
       this.segments.push([point, distance]);
@@ -146,7 +161,7 @@ const ray = {
     });
 
     ctx.beginPath();
-    ctx.moveTo(...hero.position);
+    ctx.moveTo(...eye.position);
     ctx.lineTo(...this.getCollisionPoint());
     ctx.stroke();
 
@@ -160,19 +175,34 @@ const loop = () => {
   ctx.fillStyle = '#121212';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  hero.move();
-  hero.rotate();
+  eye.move();
+  eye.rotate();
 
-  ray.getSegments(hero.position, hero.directionVector);
+  ray.getSegments(eye.position, eye.directionVector);
 
   ctx.fillStyle = 'rgba(255,255,255,0.2)';
 
-  obstacles.forEach(obstacle => {
+  obstacles.forEach(o => {
     ctx.beginPath();
     // ctx.fillStyle = obstacle.color;
-    ctx.arc(...obstacle.center, obstacle.radius, 0, Math.PI * 2);
+    if (o.radius) {
+      ctx.arc(...o.center, o.radius, 0, Math.PI * 2);
+    } else if (o.size) {
+      ctx.fillRect(...o.origin, ...o.size);
+    }
     ctx.fill();
   });
+
+  ctx.font = '18px monospace';
+  if (MOUSE.position && eye.angle) {
+    ctx.fillText(
+      `mouse: [${MOUSE.position[0]},${MOUSE.position[1]}]  angle: ${radToDeg(
+        eye.angle,
+      ).toFixed(0)}º`,
+      5,
+      18,
+    );
+  }
 
   ray.render();
 };
@@ -216,6 +246,7 @@ const init = () => {
       e.preventDefault();
     }
   });
+
   canvas.addEventListener('mousemove', e => {
     MOUSE.position = [e.clientX, e.clientY];
   });
@@ -227,8 +258,8 @@ const init = () => {
   });
 
   /** Start position and angle */
-  hero.updatePosition([canvas.width / 2, canvas.height / 2]);
-  hero.updateAngle(140);
+  eye.updatePosition([20, 20]);
+  eye.updateAngle(0);
 
   /** start loop */
   animationRequest = window.requestAnimationFrame(loop);
